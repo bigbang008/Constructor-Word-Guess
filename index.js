@@ -4,105 +4,145 @@
 
   * Prompts the user for each guess and keeps track of the user's remaining guesses
 */
-
 var word = require('./Word');
 var inquirer = require('inquirer');
+var figlet = require('figlet');
+var chalk = require('chalk');
 
 var wordList =  ["Word", "Excel", "PowerPoint", "Access", "Google Chrome", "Google Drive","Adobe Acrobat", "Adobe Flash Player", 
                 "Oracle", "Panopto", "Skype", "MATLAB", "Microsoft Visual Studio", "SPSS", "AutoCAD", "SolidWorks", "LINUX", "UNIX",
                 "macOS", "Firefox", "GIMP" ];
 
-var target;
-var targetWord;
-var guesses;
+var guesses = [];
 var remainingGuess = 10;
 
 
+//head banner
+figlet('PROGRAM NAMES GUESS GAME..', function(err, data) {
+    if (err) {
+    console.log('Something went wrong...');
+    console.dir(err);           
+    return;
+    }        
+    console.log("\n\n"+ chalk.cyan.bgWhite(data)+ "\n\n");
+    confirmStart();
+});
+
+//random word
 function randomWord(wordList){
     var randomIndex =  Math.floor(Math.random() * wordList.length);
     return wordList[randomIndex];
 };
 
-const questions = [
+var randomWordList = randomWord(wordList);
+var newWord = new word(randomWordList);
+newWord.makeGuess(' ');
+
+//confirm to start a game
+function confirmStart() {
+	var init = [
+	{
+	    type: 'text',
+	    name: 'Username',
+        message: 'What is your name?'
+	},
+	{
+	    type: 'confirm',
+	    name: 'readyToPlay',
+	    message: 'Are you ready to play?',
+	    default: true
+	}
+	];
+
+	inquirer.prompt(init).then(answers => {
+		if (answers.readyToPlay){
+			console.log(chalk.blue("Great! Welcome, " + answers.Username ));
+			start();
+		}
+
+		else {
+			console.log(chalk.yellow("Bye bye, " + answers.Username));
+			return;
+		}
+	});
+};
+
+var questions = [
     {
-        name: 'letterGuessed',
+        name: 'Guessingletter',
         message: 'Guess a letter',
-        validate: function (value) {
-            var valid = (value.length === 1) && ('abcdefghijklmnopqrstuvwxyz'.indexOf(value.charAt(0).toLowerCase()) !== -1); // fix letter logic later
+        validate: function (letter) {
+            var alphabet = 'abcdefghijklmnopqrstuvwxyz';
+            var valid = (letter.length === 1) && (alphabet.indexOf(letter.charAt(0).toLowerCase()) !== -1); 
             return valid || 'Please enter a single letter';
         },
         when: function () {
-            return (!target.allGuessed() && remainingGuess > 0);
+            return (!newWord.allGuessed() && remainingGuess > 0);
         }
     },
     {
         type: 'confirm',
-        name: 'playAgain',
-        message: 'Want to play again?',
-        // default: true,
+        name: 'Replay',
+        message: 'Do you want to play again?',
         when: function () {
-            return (target.allGuessed() || remainingGuess <= 0);
+            return (newWord.allGuessed() || remainingGuess <= 0);
         }
     }
 ];
 
-function resetGame() {
-    targetWord = randomWord(wordList);
-    // console.log(targetWord);
-    target = new word(targetWord);
-    target.makeGuess(' ');
-    guesses = [];
-    remainingGuess = 9;
-}
+function start() {
 
-function ask() {
-    // console.log('target.allGuessed():', target.allGuessed());
-    if (!target.allGuessed() && remainingGuess > 0) {
-        console.log(target + '');
+    if (!newWord.allGuessed() && remainingGuess > 0) {
+        console.log(newWord + '');
     }
     
     inquirer.prompt(questions).then(answers => {
-        // console.log('answers.playAgain ' + answers.playAgain);
-        if ('playAgain' in answers && !answers.playAgain) {
-            console.log('thanks for playing');
+        if ('Replay' in answers && !answers.Replay) {
+            console.log(chalk.yellow('Thanks for playing'));
             process.exit();
         }
-        if (answers.playAgain) {
-            resetGame();
+        if (answers.Replay) {
+            RestartGame();
         }
 
-        if (answers.hasOwnProperty('letterGuessed')) {
-            var currentGuess = answers.letterGuessed.toLowerCase();
+        if (answers.hasOwnProperty('Guessingletter')) {
+            var currentGuess = answers.Guessingletter.toLowerCase();
             
             if (guesses.indexOf(currentGuess) === -1) {
                 guesses.push(currentGuess);
-                target.makeGuess(currentGuess);
-                if (targetWord.toLowerCase().indexOf(currentGuess.toLowerCase()) === -1) {
+                newWord.makeGuess(currentGuess);
+                if (randomWordList.toLowerCase().indexOf(currentGuess.toLowerCase()) === -1) {
                     remainingGuess--;
                 }
             } else {
-                console.log('you already guessed', currentGuess);
+                console.log(chalk.red('You already guessed', currentGuess));
                 
             }
         }
 
-        if (!target.allGuessed()) {
+        if (!newWord.allGuessed()) {
             if (remainingGuess < 1) {
-                console.log('no more guesses');
-                console.log(targetWord, 'was correct.');
-
+                console.log(chalk.red.bold('---Game Over---'));
+                console.log(chalk.red("INCORRECT!!!!"));
+                console.log(chalk.green.bold("The correct was " + randomWordList));
             } else {
-                console.log('guesses so far:', guesses.join(' '));
-                console.log('guesses remaining:', remainingGuess);
+                console.log('Already Guessed:', guesses.join(' '));
+                console.log('Guesses remaining:', remainingGuess);
             }
 
         } else {
-            console.log(targetWord, 'is correct!');
-            // console.log(answers.playAgain);
+            console.log(chalk.green.bold("CORRECT !!!"));
         }
 
-        ask();
-    }); // end inquirer.then
+        start();
+    });
 }
-resetGame();
-ask();
+
+
+function RestartGame() {
+    randomWordList = randomWord(wordList);
+    newWord = new word(randomWordList);
+    newWord.makeGuess(' ');
+    guesses = [];
+    remainingGuess = 10;
+};
